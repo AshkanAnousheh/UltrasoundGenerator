@@ -1,0 +1,10 @@
+/Debug/
+/.settings/
+/Docs/
+/Third Party/
+.cproject
+.project
+*.ld
+*.elf
+*.launch
+*.lnk
