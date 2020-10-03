@@ -38,4 +38,6 @@ void    Parse_Uart_Comm(Ring_t data);
 void    Projector_Chirp_Create(Projector_t projector);
 void    Projector_Data_Validate(Projector_t projector);
 
+void    H_Bridge_Run(void);
+void    H_Bridge_Stop(void);
 #endif

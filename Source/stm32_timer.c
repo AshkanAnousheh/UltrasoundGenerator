@@ -5,7 +5,7 @@
 static      uint8_t                     alarm_initialized = 0;
 volatile    uint32_t                    timer_alarm_tick_us;
 struct      Timer_alarm_tag             alarms[NUMBER_OF_ALARMS] = {0};
-extern struct Timer_config_tag		    chirp_update;
+extern      Timer_config_t  		    chirp_update;
 
 static void Timer_H_Bridge_Configure(Timer_H_bridge_t timer);
 static void Timer_Clock_Enable(TIM_TypeDef* timer);
@@ -107,14 +107,14 @@ void Timer_H_Bridge_Run(Timer_H_bridge_t timer)
     // timer->_config->_timer_address->CCR1    = fr/2;
     // timer->_config->_timer_address->CCR3    = fr/2;
     timer->_config->_timer_address->CNT     = (0);
-    chirp_update._timer_address->CNT = (0);
-    chirp_update._timer_address->CR1 |= (TIM_CR1_CEN);
+    chirp_update->_timer_address->CNT = (0);
+    chirp_update->_timer_address->CR1 |= (TIM_CR1_CEN);
     timer->_config->_timer_address->BDTR    |= (TIM_BDTR_MOE);
 }
 void Timer_H_Bridge_Stop(Timer_H_bridge_t timer)
 {
     timer->_config->_timer_address->BDTR    &= ~(TIM_BDTR_MOE);
-    chirp_update._timer_address->CR1 &= ~(TIM_CR1_CEN);
+    chirp_update->_timer_address->CR1 &= ~(TIM_CR1_CEN);
 
 }
 

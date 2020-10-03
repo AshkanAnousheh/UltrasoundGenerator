@@ -12,10 +12,8 @@ extern volatile uint8_t         console_enter_pressed;
 extern struct Projector_tag		projector_data;
 extern IO_pin_t        			led_1,led_2,pb_1,pb_2,power_enable;
 extern Timer_H_bridge_t 		power_stage;
-extern void h_bridge_run(void);
-extern void h_bridge_stop(void);
-
-uint8_t button1_lock = 0;
+extern uint8_t                  button1_lock;
+extern Timer_config_t       	chirp_update;
 
 void SysTick_Handler(void)
 {
@@ -31,13 +29,16 @@ void EXTI0_IRQHandler(void)
 
 void EXTI9_5_IRQHandler(void)
 {
-    if((EXTI->PR & EXTI_PR_PR6) && (button1_lock == 0 ))
+    if((EXTI->PR & EXTI_PR_PR6))
     {
-        IO._set(power_enable);
-        Timer_H_Bridge_Run(power_stage);
-        IO._reset(led_1);
+        if(button1_lock == 0 )
+        {
+            IO._set(power_enable);
+            Timer_H_Bridge_Run(power_stage);
+            IO._reset(led_1);
+            button1_lock = 1;
+        }
         EXTI->PR |= EXTI_PR_PR6;
-        button1_lock = 1;
     }
     if(EXTI->PR & EXTI_PR_PR7)
     {
@@ -97,31 +98,11 @@ void TIM8_BRK_TIM12_IRQHandler(void)
 
 void TIM5_IRQHandler(void)
 {
-    static uint16_t pulse_count = 0;
 
-    TIM5->SR &= ~(TIM_SR_UIF);
-    TIM1->ARR   = projector_data._chirp._freq_array[projector_data._chirp._index];
-    TIM1->CCR1  = projector_data._chirp._duty_array[projector_data._chirp._index];
-    TIM1->CCR3  = projector_data._chirp._duty_array[projector_data._chirp._index];
-
-    if(projector_data._chirp._index > projector_data._chirp._size)
-    {
-        projector_data._chirp._index = 0;
-        Timer_H_Bridge_Stop(power_stage);
-        button1_lock = 0;
-        // if(projector_data._pulse_per_second != 0)
-        // {
-            pulse_count++;
-            if(pulse_count < projector_data._pulse_per_second)
-            {
-                Timer_Alarm(& (struct Timer_alarm_tag) {._time = projector_data._pulse_period,
-                                                        ._action = h_bridge_run});
-            }
-            else 
-                pulse_count = 0;
-        // }
-        IO._set(led_1);
-    }
+    chirp_update->_timer_address->SR &= ~(TIM_SR_UIF);
+    power_stage->_config->_timer_address->ARR  = projector_data._chirp._freq_array[projector_data._chirp._index];
+    power_stage->_config->_timer_address->CCR1 = projector_data._chirp._duty_array[projector_data._chirp._index];
+    power_stage->_config->_timer_address->CCR3 = projector_data._chirp._duty_array[projector_data._chirp._index];
 
     projector_data._chirp._index++;
 }

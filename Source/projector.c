@@ -1,6 +1,7 @@
 
 #include "projector.h"
 #include "stm32_io.h"
+#include "stm32_timer.h"
 #include <stdlib.h>
 
 static uint8_t string_compare(char* str1, char* str2);
@@ -8,8 +9,10 @@ volatile uint8_t                    console_enter_pressed;
 extern volatile Projector_req_t 	projector_request;
 extern struct Projector_tag		    projector_data;
 extern IO_pin_t        				led_1,led_2,pb_1,pb_2,power_enable;
+extern Timer_H_bridge_t 		    power_stage;
 
-void    Parse_Uart_Comm(Ring_t data)
+
+void    Projector_Parse_Console(Ring_t data)
 {
     console_enter_pressed = 0;
 
@@ -87,12 +90,6 @@ void Projector_Chirp_Create(Projector_t projector)
         // projector->_chirp->_duty_array[i] = projector->_chirp->_freq_array[i] / 2;
     }
 
-    // // Convert Frequencies Array to Proper ARR Value
-    // for(int i = 0 ; i <= array_size; i++)
-    // {
-    //     projector->_chirp._freq_array[i] = (uint16_t)(168000000 / projector->_chirp._freq_array[i]);
-    //     projector->_chirp._duty_array[i] = projector->_chirp._freq_array[i] / 2;
-    // }
 
 }
 
@@ -118,7 +115,7 @@ void Projector_Data_Validate(Projector_t projector)
     
     if(projector->_duration * projector->_pulse_per_second * 2 > 1000000)
         projector->_pulse_per_second = 1000000 / projector->_duration / 2;
-        
+
     if(projector->_pulse_per_second != 0)
         projector->_pulse_period = 1000 / projector->_pulse_per_second;
     // if(projector->_pulse_period < (2*projector->_duration))
@@ -127,16 +124,6 @@ void Projector_Data_Validate(Projector_t projector)
     //     projector->_pulse_period = (2*projector->_duration);
     // }
     
-}
-static uint8_t string_compare(char* str1, char* str2)
-{
-    while( *str1++ == *str2++ )
-    {
-        if(*str1 == 0)
-            return 1;
-    }
-    return 0;
-
 }
 
 
@@ -167,4 +154,24 @@ void Projector_Interface_Configure(void)
     IO._set(power_enable);                                                                    
     IO._irq_enable(pb_1,rising_edge);
     IO._irq_enable(pb_2,rising_edge);
+}
+
+void H_Bridge_Run(void)
+{
+	Timer_H_Bridge_Run(power_stage);
+}
+void H_Bridge_Stop(void)
+{
+	Timer_H_Bridge_Stop(power_stage);
+}
+
+static uint8_t string_compare(char* str1, char* str2)
+{
+    while( *str1++ == *str2++ )
+    {
+        if(*str1 == 0)
+            return 1;
+    }
+    return 0;
+
 }
