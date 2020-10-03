@@ -116,9 +116,13 @@ static uint16_t irq_enable(IO_pin_t me,IO_irq_edge_t edge)
 {
     
     RCC->APB2ENR |= RCC_APB2ENR_SYSCFGEN;
+    // SYSCFG->EXTICR[(me->_pin/4)] &= ~(EXTI_MASK<< (me->_pin * 4));
+    // uint32_t temp = (((uint32_t)(me->_port - GPIOA)/25) << (me->_pin % 4));
+    // SYSCFG->EXTICR[(me->_pin/4)] |= temp;
+
     SYSCFG->EXTICR[(me->_pin/4)] &= ~(EXTI_MASK<< (me->_pin * 4));
-    SYSCFG->EXTICR[(me->_pin/4)] |= 
-            (((uint16_t)(me->_port - GPIOA)/25) << (me->_pin * 4));
+    uint32_t temp = (1 << (me->_pin % 4)*4);
+    SYSCFG->EXTICR[(me->_pin/4)] |= temp;
 
     EXTI->IMR |= (1 << me->_pin);
     if (edge == rising_edge)
@@ -132,8 +136,8 @@ static uint16_t irq_enable(IO_pin_t me,IO_irq_edge_t edge)
         EXTI->FTSR |= (1 << me->_pin);
     }
     // change EXTIx_IRQn to proper exti line
-    NVIC_SetPriority(EXTI0_IRQn,0x03);
-    NVIC_EnableIRQ(EXTI0_IRQn);
+    NVIC_SetPriority(EXTI9_5_IRQn,0x03);
+    NVIC_EnableIRQ(EXTI9_5_IRQn);
 }
 
 static uint16_t irq_disable(IO_pin_t me)

@@ -3,8 +3,9 @@
 #include "stm32_timer.h"
 
 static      uint8_t                     alarm_initialized = 0;
-volatile    uint32_t                  timer_alarm_tick_us;
+volatile    uint32_t                    timer_alarm_tick_us;
 struct      Timer_alarm_tag             alarms[NUMBER_OF_ALARMS] = {0};
+extern struct Timer_config_tag		    chirp_update;
 
 static void Timer_H_Bridge_Configure(Timer_H_bridge_t timer);
 static void Timer_Clock_Enable(TIM_TypeDef* timer);
@@ -72,8 +73,8 @@ static void Timer_H_Bridge_Configure(Timer_H_bridge_t timer)
     /* IO_pin_t b1_ch3N = */ IO_Create(GPIOB,io_pin_1,(IO_configure_t) 
                             { MODE_AF, TYPE_PP, PULL_NO, SPEED_HI, AF_1 });
 
-    timer->_frequency = 100;
-    uint16_t f_pres = ( 42000.0 / timer->_frequency );       
+    timer->_frequency = 4000;
+    uint32_t f_pres = ( 168000000.0 / timer->_frequency );       
     timer->_config->_timer_address->CR1     &= ~(TIM_CR1_CEN);
     timer->_config->_timer_address->CR2     &= ~(TIM_CR2_OIS1| TIM_CR2_OIS1N| TIM_CR2_OIS3| TIM_CR2_OIS3N);
     timer->_config->_timer_address->CCER    &= ~(TIM_CCER_CC1E| TIM_CCER_CC1NE| TIM_CCER_CC3E| TIM_CCER_CC3NE );
@@ -88,28 +89,33 @@ static void Timer_H_Bridge_Configure(Timer_H_bridge_t timer)
     // OC1 and OC3 and their complementaries enable with **proper Polarity !**
     timer->_config->_timer_address->CCER    |= (TIM_CCER_CC1E| (TIM_CCER_CC1NE| TIM_CCER_CC1NP)|
                                             (TIM_CCER_CC3E| TIM_CCER_CC3P)| TIM_CCER_CC3NE );
-    timer->_config->_timer_address->PSC     = ( 4 - 1 );
+    timer->_config->_timer_address->PSC     = ( 1 - 1 );
     timer->_config->_timer_address->ARR     = (f_pres);
     timer->_config->_timer_address->CCR1    = (f_pres/2);
     timer->_config->_timer_address->CCR3    = (f_pres/2);
     timer->_config->_timer_address->CNT     = (0);
     // Turn Main Output on - inactive state: idle
-    timer->_config->_timer_address->BDTR    |= (TIM_BDTR_MOE | TIM_BDTR_OSSI | timer->_config->_dead_time );
+    timer->_config->_timer_address->BDTR    |= (/* TIM_BDTR_MOE | */ TIM_BDTR_OSSI | timer->_config->_dead_time );
     timer->_config->_timer_address->EGR     |= (TIM_EGR_UG);
 }
 void Timer_H_Bridge_Run(Timer_H_bridge_t timer)
 {
 //    timer->_frequency = 100;
-    uint16_t fr = (uint16_t)( 42000.0 / timer->_frequency );
-    uint16_t dc = (uint16_t)(fr*timer->_duty_cycle/100.0);
-    timer->_config->_timer_address->ARR     = fr;
-    timer->_config->_timer_address->CCR1    = dc;
-    timer->_config->_timer_address->CCR3    = dc;
+    // uint32_t fr = (uint32_t)( 168000000.0 / timer->_frequency );
+    // // uint32_t dc = (uint32_t)(fr*timer->_duty_cycle/100.0);
+    // timer->_config->_timer_address->ARR     = fr;
+    // timer->_config->_timer_address->CCR1    = fr/2;
+    // timer->_config->_timer_address->CCR3    = fr/2;
+    timer->_config->_timer_address->CNT     = (0);
+    chirp_update._timer_address->CNT = (0);
+    chirp_update._timer_address->CR1 |= (TIM_CR1_CEN);
     timer->_config->_timer_address->BDTR    |= (TIM_BDTR_MOE);
 }
 void Timer_H_Bridge_Stop(Timer_H_bridge_t timer)
 {
     timer->_config->_timer_address->BDTR    &= ~(TIM_BDTR_MOE);
+    chirp_update._timer_address->CR1 &= ~(TIM_CR1_CEN);
+
 }
 
 Timer_pwm_t Timer_PWM_Create( Timer_pwm_config_t config )
@@ -258,4 +264,28 @@ static void Timer_Clock_Enable(TIM_TypeDef* timer)
     if(timer == TIM14)
         RCC->APB1ENR |= RCC_APB1ENR_TIM14EN;
     
+}
+
+
+void Timer_Create(Timer_config_t timer)
+{
+    Timer_Clock_Enable( timer->_timer_address );
+    // TIM5 connected to APB1 so Fck = 168/4 = 42MHz
+    timer->_timer_address->CR2 = 0 ;
+    // timer->_timer_address->CR2 |= TIM_CR2_CCDS;
+    timer->_timer_address->DIER |=/*  TIM_DIER_CC1DE |  */TIM_DIER_UIE;
+    // timer->_timer_address->CCMR1 |= (PWM_MODE_1);
+    // timer->_timer_address->CCMR1 &= ~(TIM_CCMR1_CC1S);
+    // timer->_timer_address->CCER |= (TIM_CCER_CC1E);
+    timer->_timer_address->PSC = (84 - 1);
+    timer->_timer_address->ARR = 10;      // interrupt at each 10 us
+    timer->_timer_address->EGR |= TIM_EGR_UG;
+
+    NVIC_SetPriority(TIM5_IRQn,0x1);
+    NVIC_EnableIRQ(TIM5_IRQn);
+    // connect this timer to DMA
+    // //  config: channel4 - priority med - memory incremented - direction memory to peripheral
+    // DMA1_Stream6->CR = (DMA_SxCR_CHSEL_2| DMA_SxCR_CHSEL_1  | DMA_SxCR_PL_1 | DMA_SxCR_PSIZE_0 |
+    //                     DMA_SxCR_PL_0   | DMA_SxCR_MINC     | DMA_SxCR_DIR_0| DMA_SxCR_MSIZE_0);
+    // DMA1_Stream6->M0AR = 
 }

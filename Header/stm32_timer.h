@@ -35,7 +35,7 @@ typedef struct Timer_config_tag* Timer_config_t;
 struct Timer_H_bridge_tag
 {
     Timer_config_t  _config;
-    uint16_t        _frequency;
+    uint32_t        _frequency;
     uint8_t         _duty_cycle;
 };
 typedef struct Timer_H_bridge_tag* Timer_H_bridge_t;
@@ -79,4 +79,5 @@ void Timer_Stopwatch_Start(Timer_stopwatch_t);
 uint32_t Timer_Stopwatch_Stop(Timer_stopwatch_t);
 void Timer_Stopwatch_Destroy(Timer_stopwatch_t);
 // *******************************************
+void Timer_Create(Timer_config_t);
 #endif
